@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deepgram Real-time STT</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        max-width: 800px;
+        width: 100%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 30px;
+        text-align: center;
+        font-size: 2em;
+      }
+
+      .config-section {
+        margin-bottom: 30px;
+      }
+
+      .input-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        color: #555;
+        font-weight: 600;
+      }
+
+      input[type="text"] {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: border-color 0.3s;
+      }
+
+      input[type="text"]:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      .control-section {
+        text-align: center;
+        margin: 30px 0;
+      }
+
+      .mic-button {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: none;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-size: 48px;
+        cursor: pointer;
+        transition: all 0.3s;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        position: relative;
+      }
+
+      .mic-button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
+      }
+
+      .mic-button:active {
+        transform: scale(0.95);
+      }
+
+      .mic-button.recording {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        animation: pulse 1.5s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          box-shadow: 0 10px 30px rgba(245, 87, 108, 0.4);
+        }
+        50% {
+          box-shadow: 0 10px 50px rgba(245, 87, 108, 0.8);
+        }
+      }
+
+      .status {
+        margin-top: 15px;
+        padding: 10px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .status.ready {
+        background: #e8f5e9;
+        color: #2e7d32;
+      }
+
+      .status.recording {
+        background: #ffebee;
+        color: #c62828;
+      }
+
+      .status.connecting {
+        background: #fff3e0;
+        color: #e65100;
+      }
+
+      .audio-visualizer {
+        height: 60px;
+        background: #f5f5f5;
+        border-radius: 8px;
+        margin: 20px 0;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .audio-level {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        width: 0%;
+        transition: width 0.1s;
+        border-radius: 8px;
+      }
+
+      .transcript-section {
+        margin-top: 30px;
+      }
+
+      .transcript-box {
+        background: #f9f9f9;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 20px;
+        min-height: 200px;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+
+      .interim {
+        color: #999;
+        font-style: italic;
+      }
+
+      .final {
+        color: #333;
+        line-height: 1.6;
+      }
+
+      .instructions {
+        background: #e3f2fd;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        color: #1565c0;
+      }
+
+      .instructions strong {
+        display: block;
+        margin-bottom: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎙️ Deepgram Real-time STT</h1>
+
+      <div class="instructions">
+        <strong>Setup:</strong>
+        1. Get your API key from
+        <a href="https://console.deepgram.com" target="_blank"
+          >console.deepgram.com</a
+        ><br />
+        2. Enter it below and click the mic button to start recording
+      </div>
+
+      <div class="config-section" id="configSection">
+        <div class="input-group">
+          <label for="apiKey">Deepgram API Key:</label>
+          <input
+            type="text"
+            id="apiKey"
+            placeholder="Enter your Deepgram API key"
+          />
+        </div>
+      </div>
+
+      <div class="control-section">
+        <button class="mic-button" id="micButton">🎤</button>
+        <div class="status ready" id="status">Ready to start</div>
+      </div>
+
+      <div class="audio-visualizer">
+        <div class="audio-level" id="audioLevel"></div>
+      </div>
+
+      <div class="transcript-section">
+        <h3>Live Transcript:</h3>
+        <div class="transcript-box" id="transcriptBox">
+          <div class="final" id="finalTranscript"></div>
+          <div class="interim" id="interimTranscript"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let audioContext;
+      let analyser;
+      let processor;
+      let deepgramSocket;
+      let isRecording = false;
+      let finalTranscriptText = "";
+      let keepAliveInterval;
+      let mediaStream;
+
+      const micButton = document.getElementById("micButton");
+      const statusDiv = document.getElementById("status");
+      const apiKeyInput = document.getElementById("apiKey");
+      const audioLevelDiv = document.getElementById("audioLevel");
+      const finalTranscriptDiv = document.getElementById("finalTranscript");
+      const interimTranscriptDiv = document.getElementById("interimTranscript");
+
+      micButton.addEventListener("click", toggleRecording);
+
+      async function toggleRecording() {
+        if (isRecording) {
+          stopRecording();
+        } else {
+          await startRecording();
+        }
+      }
+
+      async function startRecording() {
+        const apiKey = apiKeyInput.value.trim();
+
+        if (!apiKey) {
+          alert("Please enter your Deepgram API key");
+          return;
+        }
+
+        try {
+          updateStatus("Connecting...", "connecting");
+
+          // Get microphone access
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+              channelCount: 1,
+              sampleRate: 16000,
+            },
+          });
+
+          // Setup AudioContext for raw PCM processing
+          audioContext = new (window.AudioContext || window.webkitAudioContext)(
+            {
+              sampleRate: 16000,
+            },
+          );
+
+          const source = audioContext.createMediaStreamSource(mediaStream);
+
+          // Setup analyser for visualization
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 256;
+          source.connect(analyser);
+          visualizeAudio();
+
+          // Connect to Deepgram WebSocket
+          const deepgramUrl =
+            `wss://api.deepgram.com/v1/listen?` +
+            new URLSearchParams({
+              encoding: "linear16",
+              sample_rate: "16000",
+              channels: "1",
+              interim_results: "true",
+              vad_events: "true",
+              endpointing: "100",
+              punctuate: "true",
+              smart_format: "true",
+              utterance_end_ms: "1000",
+            });
+
+          deepgramSocket = new WebSocket(deepgramUrl, ["token", apiKey]);
+          deepgramSocket.binaryType = "arraybuffer";
+
+          deepgramSocket.onopen = () => {
+            console.log("Deepgram connected");
+            updateStatus("Recording...", "recording");
+            isRecording = true;
+            micButton.classList.add("recording");
+            micButton.textContent = "⏹️";
+
+            // Start sending keepalive messages every 5 seconds
+            keepAliveInterval = setInterval(() => {
+              if (deepgramSocket.readyState === WebSocket.OPEN) {
+                deepgramSocket.send(JSON.stringify({ type: "KeepAlive" }));
+              }
+            }, 5000);
+
+            // Create ScriptProcessor to capture raw audio
+            const bufferSize = 2048;
+            processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+
+            processor.onaudioprocess = (e) => {
+              if (deepgramSocket.readyState === WebSocket.OPEN) {
+                const inputData = e.inputBuffer.getChannelData(0);
+
+                // Convert Float32Array to Int16Array (linear16 format)
+                const int16Data = new Int16Array(inputData.length);
+                for (let i = 0; i < inputData.length; i++) {
+                  const s = Math.max(-1, Math.min(1, inputData[i]));
+                  int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+                }
+
+                // Send raw PCM data
+                deepgramSocket.send(int16Data.buffer);
+              }
+            };
+
+            source.connect(processor);
+            processor.connect(audioContext.destination);
+          };
+
+          deepgramSocket.onmessage = (message) => {
+            const data = JSON.parse(message.data);
+
+            if (data.type === "Results") {
+              const transcript = data.channel.alternatives[0].transcript;
+
+              if (transcript && transcript.trim()) {
+                if (data.is_final) {
+                  finalTranscriptText += transcript + " ";
+                  finalTranscriptDiv.textContent = finalTranscriptText;
+                  interimTranscriptDiv.textContent = "";
+
+                  // Auto-scroll
+                  finalTranscriptDiv.parentElement.scrollTop =
+                    finalTranscriptDiv.parentElement.scrollHeight;
+                } else {
+                  interimTranscriptDiv.textContent = transcript;
+                }
+              }
+            }
+          };
+
+          deepgramSocket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+            updateStatus("Error occurred", "ready");
+            stopRecording();
+          };
+
+          deepgramSocket.onclose = (event) => {
+            console.log(
+              "Deepgram connection closed:",
+              event.code,
+              event.reason,
+            );
+            if (isRecording) {
+              updateStatus("Connection closed", "ready");
+              stopRecording();
+            }
+          };
+        } catch (error) {
+          console.error("Error starting recording:", error);
+          alert("Error accessing microphone: " + error.message);
+          updateStatus("Error", "ready");
+        }
+      }
+
+      function stopRecording() {
+        console.log("Stopping recording...");
+
+        if (keepAliveInterval) {
+          clearInterval(keepAliveInterval);
+        }
+
+        if (processor) {
+          processor.disconnect();
+          processor = null;
+        }
+
+        if (mediaStream) {
+          mediaStream.getTracks().forEach((track) => track.stop());
+          mediaStream = null;
+        }
+
+        if (deepgramSocket && deepgramSocket.readyState === WebSocket.OPEN) {
+          // Send close frame
+          deepgramSocket.send(JSON.stringify({ type: "CloseStream" }));
+          deepgramSocket.close();
+        }
+
+        if (audioContext && audioContext.state !== "closed") {
+          audioContext.close();
+        }
+
+        isRecording = false;
+        micButton.classList.remove("recording");
+        micButton.textContent = "🎤";
+        updateStatus("Ready to start", "ready");
+        audioLevelDiv.style.width = "0%";
+      }
+
+      function visualizeAudio() {
+        if (!isRecording || !analyser) return;
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(dataArray);
+
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        const level = Math.min(100, average * 1.5);
+        audioLevelDiv.style.width = level + "%";
+
+        requestAnimationFrame(visualizeAudio);
+      }
+
+      function updateStatus(message, type) {
+        statusDiv.textContent = message;
+        statusDiv.className = "status " + type;
+      }
+
+      // Cleanup on page unload
+      window.addEventListener("beforeunload", stopRecording);
+    </script>
+  </body>
+</html>

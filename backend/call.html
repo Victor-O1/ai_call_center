@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Call Center - Optimized</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 600px;
+        width: 100%;
+        overflow: hidden;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 28px;
+        margin-bottom: 10px;
+      }
+
+      .status-badge {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.2);
+        font-size: 14px;
+        margin-top: 10px;
+      }
+
+      .call-interface {
+        padding: 40px;
+      }
+
+      .call-button {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        border: none;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        margin: 0 auto;
+        display: block;
+      }
+
+      .call-button:hover {
+        transform: scale(1.05);
+      }
+
+      .call-button.active {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        animation: pulse 2s infinite;
+      }
+
+      .call-button.speaking {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        animation: pulse 1.5s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+      }
+
+      .audio-visualizer {
+        width: 100%;
+        height: 60px;
+        margin: 20px 0;
+        background: #f8f9fa;
+        border-radius: 8px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        padding: 10px;
+      }
+
+      .audio-bar {
+        width: 4px;
+        background: #667eea;
+        border-radius: 2px;
+        transition: height 0.1s ease;
+      }
+
+      .controls {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-top: 20px;
+      }
+
+      .control-button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        background: #667eea;
+        color: white;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+      }
+
+      .control-button:hover:not(:disabled) {
+        background: #764ba2;
+        transform: translateY(-2px);
+      }
+
+      .control-button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+
+      .transcript-container {
+        margin-top: 30px;
+        max-height: 300px;
+        overflow-y: auto;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+      }
+
+      .transcript-item {
+        margin-bottom: 15px;
+        padding: 12px;
+        border-radius: 8px;
+        animation: slideIn 0.3s ease;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .transcript-item.user {
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+      }
+
+      .transcript-item.ai {
+        background: #f3e5f5;
+        border-left: 4px solid #9c27b0;
+      }
+
+      .transcript-item.system {
+        background: #fff3e0;
+        border-left: 4px solid #ff9800;
+        font-size: 14px;
+      }
+
+      .speaker-label {
+        font-weight: bold;
+        margin-bottom: 5px;
+        font-size: 12px;
+        text-transform: uppercase;
+        opacity: 0.7;
+      }
+
+      .error-message {
+        background: #ffebee;
+        color: #c62828;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 20px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🎯 AI Call Center</h1>
+        <div class="status-badge" id="status">Ready to Connect</div>
+      </div>
+
+      <div class="call-interface">
+        <button class="call-button" id="callButton">📞 Call</button>
+
+        <div class="audio-visualizer" id="visualizer">
+          <div class="audio-bar"></div>
+          <div class="audio-bar"></div>
+          <div class="audio-bar"></div>
+          <div class="audio-bar"></div>
+          <div class="audio-bar"></div>
+          <div class="audio-bar"></div>
+          <div class="audio-bar"></div>
+          <div class="audio-bar"></div>
+        </div>
+
+        <div class="controls">
+          <button class="control-button" id="muteButton" disabled>
+            🎤 Mute
+          </button>
+          <button class="control-button" id="clearButton">🗑️ Clear</button>
+        </div>
+
+        <div class="transcript-container" id="transcript"></div>
+        <div class="error-message" id="error"></div>
+      </div>
+    </div>
+
+    <script>
+      class RealTimeCallCenter {
+        constructor() {
+          this.ws = null;
+          this.isConnected = false;
+          this.isRecording = false;
+          this.isMuted = false;
+          this.aiIsSpeaking = false;
+          this.mediaRecorder = null;
+          this.audioContext = null;
+          this.processingAudioContext = null;
+          this.currentAudioSource = null;
+
+          this.callButton = document.getElementById("callButton");
+          this.muteButton = document.getElementById("muteButton");
+          this.clearButton = document.getElementById("clearButton");
+          this.status = document.getElementById("status");
+          this.transcript = document.getElementById("transcript");
+          this.error = document.getElementById("error");
+          this.visualizer = document.getElementById("visualizer");
+
+          this.setupEventListeners();
+        }
+
+        setupEventListeners() {
+          this.callButton.addEventListener("click", () => this.toggleCall());
+          this.muteButton.addEventListener("click", () => this.toggleMute());
+          this.clearButton.addEventListener("click", () =>
+            this.clearTranscript(),
+          );
+        }
+
+        async toggleCall() {
+          if (!this.isConnected) {
+            await this.startCall();
+          } else {
+            this.endCall();
+          }
+        }
+
+        async startCall() {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+                sampleRate: 16000,
+              },
+            });
+
+            // Create audio contexts
+            this.audioContext = new (
+              window.AudioContext || window.webkitAudioContext
+            )({
+              sampleRate: 24000,
+            });
+
+            this.processingAudioContext = new (
+              window.AudioContext || window.webkitAudioContext
+            )({
+              sampleRate: 16000,
+            });
+
+            // Connect to backend on port 8000
+            const wsUrl = "ws://localhost:8000/ws/realtime-call";
+
+            console.log("🔌 Connecting to:", wsUrl);
+            this.ws = new WebSocket(wsUrl);
+
+            this.ws.onopen = () => {
+              this.isConnected = true;
+              this.updateStatus("Connected - Listening...", "active");
+              this.callButton.textContent = "📞 End Call";
+              this.muteButton.disabled = false;
+              this.visualizer.style.display = "flex";
+              this.addSystemMessage("Call started. Speak now!");
+              this.startRecording(stream);
+            };
+
+            this.ws.onmessage = (event) =>
+              this.handleMessage(JSON.parse(event.data));
+
+            this.ws.onerror = (error) => {
+              console.error("WebSocket error:", error);
+              this.showError(
+                "Connection error. Make sure backend is running on port 8000.",
+              );
+            };
+
+            this.ws.onclose = () => {
+              this.isConnected = false;
+              this.updateStatus("Disconnected", "");
+              this.stopRecording();
+            };
+          } catch (error) {
+            console.error("Error starting call:", error);
+            this.showError(
+              "Microphone access denied. Please allow microphone access.",
+            );
+          }
+        }
+
+        startRecording(stream) {
+          // Use audio/webm format
+          const options = { mimeType: "audio/webm" };
+
+          this.mediaRecorder = new MediaRecorder(stream, options);
+
+          this.mediaRecorder.ondataavailable = async (event) => {
+            if (event.data.size > 0 && !this.isMuted && !this.aiIsSpeaking) {
+              try {
+                // Convert webm blob to PCM
+                const arrayBuffer = await event.data.arrayBuffer();
+
+                // Decode the audio data
+                const audioBuffer =
+                  await this.processingAudioContext.decodeAudioData(
+                    arrayBuffer,
+                  );
+
+                // Get PCM data as Float32Array
+                const pcmData = audioBuffer.getChannelData(0);
+
+                // Convert float32 to int16 PCM
+                const int16Data = new Int16Array(pcmData.length);
+                for (let i = 0; i < pcmData.length; i++) {
+                  const s = Math.max(-1, Math.min(1, pcmData[i]));
+                  int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+                }
+
+                // Convert to base64
+                const base64Audio = btoa(
+                  String.fromCharCode(...new Uint8Array(int16Data.buffer)),
+                );
+
+                // Send to backend
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                  this.ws.send(
+                    JSON.stringify({
+                      type: "audio",
+                      data: base64Audio,
+                    }),
+                  );
+                }
+
+                this.animateVisualizer();
+              } catch (err) {
+                console.error("Audio processing error:", err);
+              }
+            }
+          };
+
+          this.mediaRecorder.start(250); // 250ms chunks
+          this.isRecording = true;
+        }
+
+        stopRecording() {
+          if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
+            this.mediaRecorder.stop();
+            this.mediaRecorder.stream
+              .getTracks()
+              .forEach((track) => track.stop());
+          }
+          this.isRecording = false;
+          this.visualizer.style.display = "none";
+
+          // Close audio contexts
+          if (this.processingAudioContext) {
+            this.processingAudioContext.close();
+          }
+        }
+
+        async handleMessage(data) {
+          console.log("📨 Received:", data.type);
+
+          switch (data.type) {
+            case "connected":
+              this.addSystemMessage(data.message);
+              break;
+
+            case "transcription":
+              this.addTranscript("user", data.text);
+              break;
+
+            case "ai_response":
+              this.addTranscript("ai", data.text);
+              break;
+
+            case "ai_speaking_start":
+              this.aiIsSpeaking = true;
+              this.updateStatus("AI is speaking...", "speaking");
+              // Stop all current audio
+              if (this.currentAudioSource) {
+                this.currentAudioSource.stop();
+              }
+              break;
+
+            case "audio_chunk":
+              await this.playAudioChunk(data.data);
+              break;
+
+            case "ai_speaking_end":
+              this.aiIsSpeaking = false;
+              this.updateStatus("Listening...", "active");
+              break;
+
+            case "error":
+              this.showError(data.message);
+              break;
+          }
+        }
+
+        async playAudioChunk(base64Data) {
+          try {
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+
+            // Decode WAV data
+            const dataView = new DataView(bytes.buffer);
+            const audioData = new Int16Array(
+              bytes.buffer,
+              44, // Skip WAV header
+              (bytes.length - 44) / 2,
+            );
+
+            const float32Array = new Float32Array(audioData.length);
+            for (let i = 0; i < audioData.length; i++) {
+              float32Array[i] = audioData[i] / 32768.0;
+            }
+
+            const audioBuffer = this.audioContext.createBuffer(
+              1,
+              float32Array.length,
+              24000,
+            );
+            audioBuffer.getChannelData(0).set(float32Array);
+
+            const source = this.audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(this.audioContext.destination);
+            source.start();
+
+            this.currentAudioSource = source;
+          } catch (error) {
+            console.error("Audio playback error:", error);
+          }
+        }
+
+        toggleMute() {
+          this.isMuted = !this.isMuted;
+          this.muteButton.textContent = this.isMuted ? "🔇 Unmute" : "🎤 Mute";
+          this.updateStatus(
+            this.isMuted ? "Muted" : "Listening...",
+            this.isMuted ? "" : "active",
+          );
+        }
+
+        endCall() {
+          if (this.ws) {
+            this.ws.send(JSON.stringify({ type: "end_call" }));
+            this.ws.close();
+          }
+          this.stopRecording();
+          if (this.currentAudioSource) {
+            this.currentAudioSource.stop();
+          }
+          if (this.audioContext) {
+            this.audioContext.close();
+          }
+          this.callButton.textContent = "📞 Call";
+          this.muteButton.disabled = true;
+          this.updateStatus("Call Ended", "");
+          this.addSystemMessage("Call ended.");
+        }
+
+        addTranscript(speaker, text) {
+          const item = document.createElement("div");
+          item.className = `transcript-item ${speaker}`;
+
+          item.innerHTML = `
+                    <div class="speaker-label">${speaker === "user" ? "👤 You" : "🤖 AI Agent"}</div>
+                    <div>${text}</div>
+                `;
+
+          this.transcript.appendChild(item);
+          this.transcript.scrollTop = this.transcript.scrollHeight;
+        }
+
+        addSystemMessage(text) {
+          const item = document.createElement("div");
+          item.className = "transcript-item system";
+          item.innerHTML = `
+                    <div class="speaker-label">ℹ️ System</div>
+                    <div>${text}</div>
+                `;
+          this.transcript.appendChild(item);
+          this.transcript.scrollTop = this.transcript.scrollHeight;
+        }
+
+        clearTranscript() {
+          this.transcript.innerHTML = "";
+        }
+
+        updateStatus(text, className) {
+          this.status.textContent = text;
+          this.callButton.className = `call-button ${className}`;
+        }
+
+        showError(message) {
+          this.error.textContent = message;
+          this.error.style.display = "block";
+          setTimeout(() => {
+            this.error.style.display = "none";
+          }, 5000);
+        }
+
+        animateVisualizer() {
+          const bars = this.visualizer.querySelectorAll(".audio-bar");
+          bars.forEach((bar) => {
+            const height = Math.random() * 40 + 10;
+            bar.style.height = `${height}px`;
+          });
+        }
+      }
+
+      // Initialize
+      document.addEventListener("DOMContentLoaded", () => {
+        new RealTimeCallCenter();
+      });
+    </script>
+  </body>
+</html>

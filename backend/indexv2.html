@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+  <body>
+    <h2>🎙 Speak</h2>
+    <p id="out"></p>
+
+    <script>
+      const ws = new WebSocket("ws://localhost:8000/ws");
+      ws.binaryType = "arraybuffer";
+
+      ws.onmessage = (e) => {
+        document.getElementById("out").innerText += " " + e.data;
+      };
+
+      async function start() {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        const ctx = new AudioContext({ sampleRate: 16000 });
+        const source = ctx.createMediaStreamSource(stream);
+
+        const processor = ctx.createScriptProcessor(4096, 1, 1);
+        source.connect(processor);
+        processor.connect(ctx.destination);
+
+        processor.onaudioprocess = (e) => {
+          if (ws.readyState !== WebSocket.OPEN) return;
+          const input = e.inputBuffer.getChannelData(0);
+          ws.send(input.buffer);
+        };
+      }
+
+      ws.onopen = start;
+    </script>
+  </body>
+</html>
